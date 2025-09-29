@@ -12,10 +12,18 @@ services:
         value: 0.0.0.0
       - key: WEB_DEBUG
         value: false
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
       - key: MODEL_SAVE_DIR
         value: /opt/render/project/src/models
       - key: DATA_DIR
         value: /opt/render/project/src/data
+      - key: CHECKPOINT_DIR
+        value: /opt/render/project/src/checkpoints
+      - key: LOG_DIR
+        value: /opt/render/project/src/logs
     disk:
       name: ai-models
       mountPath: /opt/render/project/src/models
