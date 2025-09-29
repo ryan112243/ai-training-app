@@ -402,10 +402,17 @@ if __name__ == '__main__':
     create_directories()
     
     print("AI訓練Web界面啟動中...")
-    print(f"訪問地址: http://{Config.WEB_HOST}:{Config.WEB_PORT}")
+    
+    # 從環境變數獲取配置，如果沒有則使用默認值
+    import os
+    host = os.environ.get('WEB_HOST', Config.WEB_HOST)
+    port = int(os.environ.get('PORT', Config.WEB_PORT))
+    debug = os.environ.get('WEB_DEBUG', str(Config.WEB_DEBUG)).lower() == 'true'
+    
+    print(f"訪問地址: http://{host}:{port}")
     
     app.run(
-        host=Config.WEB_HOST,
-        port=Config.WEB_PORT,
-        debug=Config.WEB_DEBUG
+        host=host,
+        port=port,
+        debug=debug
     )
