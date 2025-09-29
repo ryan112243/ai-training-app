@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多域AI助手 - 智能對話平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 300;
+            text-align: center;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .domain-selector {
+            margin-bottom: 2rem;
+        }
+
+        .domain-selector h3 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .domain-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .domain-btn {
+            padding: 0.8rem 1rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .domain-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .domain-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+
+        .message {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+        }
+
+        .message-content {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            color: white;
+            max-width: 70%;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .input-container {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 25px;
+            padding: 1rem 1.5rem;
+            color: white;
+            font-size: 1rem;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(72, 52, 212, 0.4);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 1rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .domain-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .domain-info h4 {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .domain-info p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+
+            .chat-container {
+                order: 1;
+            }
+
+            .domain-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .domain-btn {
+                flex: 1;
+                min-width: calc(50% - 0.25rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 多域AI助手 - 智能對話平台</h1>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="domain-selector">
+                <h3>選擇AI領域</h3>
+                <div class="domain-buttons">
+                    <button class="domain-btn active" data-domain="math">📊 數學計算</button>
+                    <button class="domain-btn" data-domain="programming">💻 程式設計</button>
+                    <button class="domain-btn" data-domain="dialogue">💬 智能對話</button>
+                    <button class="domain-btn" data-domain="writing">✍️ 創意寫作</button>
+                    <button class="domain-btn" data-domain="mun">🌍 模擬聯合國</button>
+                </div>
+            </div>
+
+            <div class="domain-info" id="domainInfo">
+                <h4>數學計算</h4>
+                <p>解決各種數學問題，包括代數、幾何、微積分等。支持方程求解、數值計算和數學證明。</p>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h2>歡迎使用多域AI助手！</h2>
+                    <p>選擇左側的AI領域，開始您的智能對話之旅</p>
+                    <p>支持數學、程式設計、對話、寫作和模擬聯合國等多個領域</p>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <p>🤔 AI正在思考中...</p>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        class="input-field" 
+                        id="messageInput" 
+                        placeholder="輸入您的問題或需求..."
+                        rows="1"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AIInterface {
+            constructor() {
+                this.currentDomain = 'math';
+                this.isLoading = false;
+                this.initializeElements();
+                this.bindEvents();
+                this.updateDomainInfo();
+            }
+
+            initializeElements() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendBtn = document.getElementById('sendBtn');
+                this.loading = document.getElementById('loading');
+                this.domainInfo = document.getElementById('domainInfo');
+                this.domainButtons = document.querySelectorAll('.domain-btn');
+            }
+
+            bindEvents() {
+                // 發送按鈕事件
+                this.sendBtn.addEventListener('click', () => this.sendMessage());
+                
+                // 輸入框事件
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // 自動調整輸入框高度
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
+                });
+
+                // 領域選擇事件
+                this.domainButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.selectDomain(btn.dataset.domain);
+                    });
+                });
+            }
+
+            selectDomain(domain) {
+                this.currentDomain = domain;
+                
+                // 更新按鈕狀態
+                this.domainButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.domain === domain) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                this.updateDomainInfo();
+                this.clearWelcomeMessage();
+            }
+
+            updateDomainInfo() {
+                const domainInfos = {
+                    math: {
+                        title: '數學計算',
+                        description: '解決各種數學問題，包括代數、幾何、微積分等。支持方程求解、數值計算和數學證明。'
+                    },
+                    programming: {
+                        title: '程式設計',
+                        description: '協助程式開發，包括代碼編寫、調試、算法設計和技術問題解答。'
+                    },
+                    dialogue: {
+                        title: '智能對話',
+                        description: '進行自然對話，提供資訊諮詢、情感支持和日常交流服務。'
+                    },
+                    writing: {
+                        title: '創意寫作',
+                        description: '協助創作各種文體，包括詩歌、小說、文章和正式文件等。'
+                    },
+                    mun: {
+                        title: '模擬聯合國',
+                        description: '提供聯合國會議模擬、外交文件起草和國際關係分析服務。'
+                    }
+                };
+
+                const info = domainInfos[this.currentDomain];
+                this.domainInfo.innerHTML = `
+                    <h4>${info.title}</h4>
+                    <p>${info.description}</p>
+                `;
+            }
+
+            clearWelcomeMessage() {
+                const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+                if (welcomeMessage) {
+                    welcomeMessage.remove();
+                }
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message || this.isLoading) return;
+
+                // 添加用戶消息
+                this.addMessage(message, 'user');
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+
+                // 顯示加載狀態
+                this.setLoading(true);
+
+                try {
+                    // 發送請求到後端API
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            domain: this.currentDomain
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('網路請求失敗');
+                    }
+
+                    const data = await response.json();
+                    
+                    // 添加AI回應
+                    this.addMessage(data.response, 'ai');
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.addMessage('抱歉，發生了錯誤。請稍後再試。', 'ai');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            addMessage(content, type) {
+                this.clearWelcomeMessage();
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = type === 'user' ? '👤' : '🤖';
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                messageContent.innerHTML = this.formatMessage(content);
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+                
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            formatMessage(content) {
+                // 簡單的格式化處理
+                return content
+                    .replace(/\n/g, '<br>')
+                    .replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>');
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                this.sendBtn.disabled = loading;
+                
+                if (loading) {
+                    this.loading.classList.add('show');
+                } else {
+                    this.loading.classList.remove('show');
+                }
+                
+                this.scrollToBottom();
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                }, 100);
+            }
+        }
+
+        // 初始化應用
+        document.addEventListener('DOMContentLoaded', () => {
+            new AIInterface();
+        });
+    </script>
+</body>
+</html>

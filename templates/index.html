@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}AI訓練平台 - 首頁{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-brain me-3"></i>AI訓練平台
+            </h1>
+            <p class="lead text-muted">
+                一個功能完整的人工智能模型訓練和部署平台
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- 功能卡片 -->
+<div class="row g-4 mb-5">
+    <!-- AI聊天助手卡片已移至獨立應用 -->
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-dumbbell fa-3x text-success"></i>
+                </div>
+                <h5 class="card-title">模型訓練</h5>
+                <p class="card-text">支持多種神經網絡架構，包括CNN、ResNet等</p>
+                <a href="{{ url_for('train_page') }}" class="btn btn-success">
+                    開始訓練
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-magic fa-3x text-warning"></i>
+                </div>
+                <h5 class="card-title">智能預測</h5>
+                <p class="card-text">上傳圖像或數據，獲得即時預測結果</p>
+                <a href="{{ url_for('predict_page') }}" class="btn btn-warning">
+                    開始預測
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-database fa-3x text-info"></i>
+                </div>
+                <h5 class="card-title">模型管理</h5>
+                <p class="card-text">管理已訓練的模型，查看性能指標</p>
+                <a href="{{ url_for('models_page') }}" class="btn btn-info">
+                    管理模型
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速入門指南 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>快速入門指南
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-play-circle text-primary me-2"></i>開始使用</h5>
+                        <ol class="list-group list-group-numbered">
+                            <li class="list-group-item border-0 ps-0">
+                                <strong>準備數據：</strong>將訓練數據放入 <code>data/train</code> 目錄
+                            </li>
+                            <li class="list-group-item border-0 ps-0">
+                                <strong>選擇模型：</strong>在訓練頁面選擇適合的模型架構
+                            </li>
+                            <li class="list-group-item border-0 ps-0">
+                                <strong>開始訓練：</strong>設置參數並開始訓練過程
+                            </li>
+                            <li class="list-group-item border-0 ps-0">
+                                <strong>評估預測：</strong>使用訓練好的模型進行預測
+                            </li>
+                        </ol>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-cogs text-success me-2"></i>支持的功能</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                多種神經網絡架構（CNN、ResNet、AutoEncoder）
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                自動數據增強和預處理
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                實時訓練監控和可視化
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                模型保存和加載管理
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Web界面友好操作
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 系統狀態 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card status-card">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-white" id="system-status">
+                                <i class="fas fa-circle text-success"></i> 運行中
+                            </div>
+                            <div class="metric-label text-light">系統狀態</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-white" id="training-status">
+                                待機中
+                            </div>
+                            <div class="metric-label text-light">訓練狀態</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-white" id="model-count">
+                                0
+                            </div>
+                            <div class="metric-label text-light">已保存模型</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-white" id="device-info">
+                                CPU
+                            </div>
+                            <div class="metric-label text-light">計算設備</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 頁面加載時更新狀態
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSystemStatus();
+        
+        // 每5秒更新一次狀態
+        setInterval(updateSystemStatus, 5000);
+    });
+    
+    function updateSystemStatus() {
+        // 更新訓練狀態
+        apiRequest('/api/training_status')
+            .then(data => {
+                const statusElement = document.getElementById('training-status');
+                if (data.is_training) {
+                    statusElement.innerHTML = `
+                        <span class="loading-spinner me-2"></span>
+                        訓練中 (${data.current_epoch}/${data.total_epochs})
+                    `;
+                } else {
+                    statusElement.textContent = '待機中';
+                }
+            })
+            .catch(error => {
+                console.error('獲取訓練狀態失敗:', error);
+            });
+    }
+    
+    function showTrainingStatus() {
+        apiRequest('/api/training_status')
+            .then(data => {
+                let message = `訓練狀態: ${data.message}\n`;
+                if (data.is_training) {
+                    message += `進度: ${data.current_epoch}/${data.total_epochs}\n`;
+                    message += `訓練損失: ${formatNumber(data.train_loss)}\n`;
+                    message += `驗證損失: ${formatNumber(data.val_loss)}\n`;
+                    message += `訓練準確率: ${formatPercent(data.train_acc)}\n`;
+                    message += `驗證準確率: ${formatPercent(data.val_acc)}`;
+                }
+                
+                alert(message);
+            })
+            .catch(error => {
+                showToast('獲取訓練狀態失敗', 'error');
+            });
+    }
+</script>
+{% endblock %}

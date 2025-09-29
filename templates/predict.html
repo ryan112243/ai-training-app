@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}智能預測 - AI訓練平台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-magic text-success me-2"></i>智能預測
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 預測配置 -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>預測配置
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="prediction-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label">選擇模型</label>
+                        <select class="form-select" id="model-select" name="model_name">
+                            <option value="SimpleNN">簡單神經網絡</option>
+                            <option value="CNN">卷積神經網絡</option>
+                            <option value="ResNet">殘差網絡</option>
+                            <option value="AutoEncoder">自編碼器</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="model-file" class="form-label">模型文件</label>
+                        <select class="form-select" id="model-file" name="model_file">
+                            <option value="best_model.pth">最佳模型</option>
+                            <option value="final_model.pth">最終模型</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">上傳文件</label>
+                        <div class="file-upload-area" id="file-upload-area">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <p class="mb-2">點擊或拖拽文件到此處</p>
+                            <p class="text-muted small">支持 PNG, JPG, JPEG 格式</p>
+                            <input type="file" id="file-input" name="file" accept=".png,.jpg,.jpeg" style="display: none;">
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success" id="predict-btn" disabled>
+                            <i class="fas fa-magic me-2"></i>開始預測
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 預測歷史 -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>預測歷史
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearHistory()">
+                    <i class="fas fa-trash me-1"></i>清空
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="prediction-history" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-muted text-center">暫無預測記錄</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 預測結果 -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>預測結果
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="prediction-result" class="text-center text-muted">
+                    <i class="fas fa-image fa-4x mb-3"></i>
+                    <p>請上傳圖像文件進行預測</p>
+                </div>
+                
+                <!-- 預測詳情 -->
+                <div id="prediction-details" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">上傳的圖像</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <img id="uploaded-image" class="img-fluid" style="max-height: 300px; border-radius: 10px;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">預測結果</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <div class="metric-value text-success" id="predicted-class">
+                                            --
+                                        </div>
+                                        <div class="metric-label">預測類別</div>
+                                    </div>
+                                    
+                                    <div class="text-center mb-3">
+                                        <div class="metric-value text-primary" id="confidence-score">
+                                            0%
+                                        </div>
+                                        <div class="metric-label">置信度</div>
+                                    </div>
+                                    
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-success" id="confidence-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 概率分布 -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">類別概率分布</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="probability-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let probabilityChart;
+    let predictionHistory = [];
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initFileUpload();
+        initProbabilityChart();
+        loadPredictionHistory();
+        
+        // 表單提交處理
+        document.getElementById('prediction-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            makePrediction();
+        });
+    });
+    
+    function initFileUpload() {
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const fileInput = document.getElementById('file-input');
+        const predictBtn = document.getElementById('predict-btn');
+        
+        // 點擊上傳區域
+        fileUploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // 文件選擇
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileSelect(file);
+            }
+        });
+        
+        // 拖拽上傳
+        fileUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        });
+        
+        fileUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    fileInput.files = files;
+                    handleFileSelect(file);
+                } else {
+                    showToast('請選擇圖像文件', 'warning');
+                }
+            }
+        });
+    }
+    
+    function handleFileSelect(file) {
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const predictBtn = document.getElementById('predict-btn');
+        
+        // 顯示文件信息
+        fileUploadArea.innerHTML = `
+            <i class="fas fa-file-image fa-2x text-success mb-2"></i>
+            <p class="mb-1"><strong>${file.name}</strong></p>
+            <p class="text-muted small">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+        `;
+        
+        // 啟用預測按鈕
+        predictBtn.disabled = false;
+        
+        // 預覽圖像
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('uploaded-image').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    function initProbabilityChart() {
+        const ctx = document.getElementById('probability-chart').getContext('2d');
+        probabilityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['類別 0', '類別 1', '類別 2', '類別 3', '類別 4', 
+                        '類別 5', '類別 6', '類別 7', '類別 8', '類別 9'],
+                datasets: [{
+                    label: '概率',
+                    data: [],
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '各類別預測概率'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: {
+                            callback: function(value) {
+                                return (value * 100).toFixed(0) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function makePrediction() {
+        const form = document.getElementById('prediction-form');
+        const formData = new FormData(form);
+        const predictBtn = document.getElementById('predict-btn');
+        
+        // 檢查是否選擇了文件
+        if (!formData.get('file') || formData.get('file').size === 0) {
+            showToast('請先選擇要預測的文件', 'warning');
+            return;
+        }
+        
+        // 禁用按鈕並顯示加載狀態
+        predictBtn.disabled = true;
+        predictBtn.innerHTML = '<span class="loading-spinner me-2"></span>預測中...';
+        
+        fetch('/api/predict', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPredictionResult(data.result);
+                addToPredictionHistory(data.result);
+                showToast('預測完成', 'success');
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('預測失敗:', error);
+            showToast('預測失敗', 'error');
+        })
+        .finally(() => {
+            // 恢復按鈕狀態
+            predictBtn.disabled = false;
+            predictBtn.innerHTML = '<i class="fas fa-magic me-2"></i>開始預測';
+        });
+    }
+    
+    function displayPredictionResult(result) {
+        // 顯示預測詳情
+        document.getElementById('prediction-details').style.display = 'block';
+        document.getElementById('prediction-result').style.display = 'none';
+        
+        // 更新預測結果
+        document.getElementById('predicted-class').textContent = `類別 ${result.prediction}`;
+        document.getElementById('confidence-score').textContent = formatPercent(result.confidence * 100);
+        document.getElementById('confidence-bar').style.width = (result.confidence * 100) + '%';
+        
+        // 更新概率圖表
+        probabilityChart.data.datasets[0].data = result.probabilities;
+        probabilityChart.update();
+    }
+    
+    function addToPredictionHistory(result) {
+        const timestamp = new Date().toLocaleString();
+        const historyItem = {
+            timestamp: timestamp,
+            prediction: result.prediction,
+            confidence: result.confidence,
+            probabilities: result.probabilities
+        };
+        
+        predictionHistory.unshift(historyItem);
+        
+        // 限制歷史記錄數量
+        if (predictionHistory.length > 10) {
+            predictionHistory = predictionHistory.slice(0, 10);
+        }
+        
+        updatePredictionHistoryDisplay();
+        savePredictionHistory();
+    }
+    
+    function updatePredictionHistoryDisplay() {
+        const historyContainer = document.getElementById('prediction-history');
+        
+        if (predictionHistory.length === 0) {
+            historyContainer.innerHTML = '<div class="text-muted text-center">暫無預測記錄</div>';
+            return;
+        }
+        
+        historyContainer.innerHTML = predictionHistory.map(item => `
+            <div class="border-bottom pb-2 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>類別 ${item.prediction}</strong>
+                        <span class="badge bg-primary ms-2">${formatPercent(item.confidence * 100)}</span>
+                    </div>
+                    <small class="text-muted">${item.timestamp}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function clearHistory() {
+        predictionHistory = [];
+        updatePredictionHistoryDisplay();
+        savePredictionHistory();
+        showToast('預測歷史已清空', 'info');
+    }
+    
+    function savePredictionHistory() {
+        localStorage.setItem('predictionHistory', JSON.stringify(predictionHistory));
+    }
+    
+    function loadPredictionHistory() {
+        const saved = localStorage.getItem('predictionHistory');
+        if (saved) {
+            predictionHistory = JSON.parse(saved);
+            updatePredictionHistoryDisplay();
+        }
+    }
+</script>
+{% endblock %}

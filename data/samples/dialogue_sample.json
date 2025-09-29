@@ -1,0 +1,11 @@
+[
+  {
+    "input": "你好，今天天氣怎麼樣？",
+    "output": "你好！今天天氣很不錯，陽光明媚，適合外出活動。",
+    "type": "dialogue",
+    "metadata": {
+      "style": "friendly",
+      "topic": "weather"
+    }
+  }
+]

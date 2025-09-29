@@ -1,0 +1,11 @@
+[
+  {
+    "input": "寫一個函數計算階乘",
+    "output": "def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n-1)",
+    "type": "programming",
+    "metadata": {
+      "difficulty": "medium",
+      "language": "python"
+    }
+  }
+]

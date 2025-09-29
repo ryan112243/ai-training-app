@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}模型訓練 - AI訓練平台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-dumbbell text-primary me-2"></i>模型訓練
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 訓練配置 -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>訓練配置
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="training-form">
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label">模型架構</label>
+                        <select class="form-select" id="model-select" name="model_name">
+                            <option value="SimpleNN">簡單神經網絡</option>
+                            <option value="CNN">卷積神經網絡</option>
+                            <option value="ResNet">殘差網絡</option>
+                            <option value="AutoEncoder">自編碼器</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="epochs" class="form-label">訓練輪數</label>
+                        <input type="number" class="form-control" id="epochs" name="epochs" 
+                               value="20" min="1" max="1000">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="learning-rate" class="form-label">學習率</label>
+                        <input type="number" class="form-control" id="learning-rate" name="learning_rate" 
+                               value="0.001" min="0.0001" max="1" step="0.0001">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="batch-size" class="form-label">批次大小</label>
+                        <select class="form-select" id="batch-size" name="batch_size">
+                            <option value="16">16</option>
+                            <option value="32" selected>32</option>
+                            <option value="64">64</option>
+                            <option value="128">128</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" id="start-training-btn">
+                            <i class="fas fa-play me-2"></i>開始訓練
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 訓練狀態 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>訓練狀態
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>進度</span>
+                        <span id="progress-text">0/0</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="train-loss">0.000</div>
+                            <div class="metric-label">訓練損失</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="val-loss">0.000</div>
+                            <div class="metric-label">驗證損失</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row text-center mt-3">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="train-acc">0.0%</div>
+                            <div class="metric-label">訓練準確率</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value" id="val-acc">0.0%</div>
+                            <div class="metric-label">驗證準確率</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info" id="status-message">
+                        準備就緒
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 訓練可視化 -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>訓練曲線
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshChart()">
+                    <i class="fas fa-sync-alt me-1"></i>刷新
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="loss-chart" width="400" height="300"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="accuracy-chart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 訓練日誌 -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>訓練日誌
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearLogs()">
+                    <i class="fas fa-trash me-1"></i>清空
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="training-logs" style="height: 200px; overflow-y: auto; background-color: #f8f9fa; padding: 1rem; border-radius: 5px; font-family: monospace; font-size: 0.9rem;">
+                    <div class="text-muted">等待訓練開始...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let lossChart, accuracyChart;
+    let trainingInterval;
+    let isTraining = false;
+    
+    // 初始化圖表
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        updateTrainingStatus();
+        
+        // 表單提交處理
+        document.getElementById('training-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            startTraining();
+        });
+    });
+    
+    function initCharts() {
+        // 損失圖表
+        const lossCtx = document.getElementById('loss-chart').getContext('2d');
+        lossChart = new Chart(lossCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '訓練損失',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: '驗證損失',
+                    data: [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '損失曲線'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // 準確率圖表
+        const accCtx = document.getElementById('accuracy-chart').getContext('2d');
+        accuracyChart = new Chart(accCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '訓練準確率',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: '驗證準確率',
+                    data: [],
+                    borderColor: 'rgb(255, 205, 86)',
+                    backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '準確率曲線'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    function startTraining() {
+        if (isTraining) {
+            showToast('訓練正在進行中', 'warning');
+            return;
+        }
+        
+        const formData = new FormData(document.getElementById('training-form'));
+        const data = Object.fromEntries(formData);
+        
+        const startBtn = document.getElementById('start-training-btn');
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<span class="loading-spinner me-2"></span>啟動中...';
+        
+        apiRequest('/api/start_training', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.success) {
+                showToast('訓練已開始', 'success');
+                isTraining = true;
+                addLog('訓練已開始...');
+                
+                // 開始定期更新狀態
+                trainingInterval = setInterval(updateTrainingStatus, 2000);
+            } else {
+                showToast(response.message, 'error');
+                resetTrainingButton();
+            }
+        })
+        .catch(error => {
+            showToast('啟動訓練失敗', 'error');
+            resetTrainingButton();
+        });
+    }
+    
+    function updateTrainingStatus() {
+        apiRequest('/api/training_status')
+            .then(data => {
+                // 更新進度條
+                const progress = data.total_epochs > 0 ? 
+                    (data.current_epoch / data.total_epochs) * 100 : 0;
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = 
+                    `${data.current_epoch}/${data.total_epochs}`;
+                
+                // 更新指標
+                document.getElementById('train-loss').textContent = formatNumber(data.train_loss);
+                document.getElementById('val-loss').textContent = formatNumber(data.val_loss);
+                document.getElementById('train-acc').textContent = formatPercent(data.train_acc);
+                document.getElementById('val-acc').textContent = formatPercent(data.val_acc);
+                
+                // 更新狀態消息
+                document.getElementById('status-message').textContent = data.message;
+                
+                // 更新圖表
+                if (data.current_epoch > 0) {
+                    updateCharts(data);
+                }
+                
+                // 檢查訓練是否完成
+                if (data.is_training) {
+                    if (!isTraining) {
+                        isTraining = true;
+                        addLog('訓練進行中...');
+                    }
+                    addLog(`Epoch ${data.current_epoch}: 訓練損失=${formatNumber(data.train_loss)}, 驗證損失=${formatNumber(data.val_loss)}, 訓練準確率=${formatPercent(data.train_acc)}, 驗證準確率=${formatPercent(data.val_acc)}`);
+                } else if (isTraining) {
+                    // 訓練完成
+                    isTraining = false;
+                    clearInterval(trainingInterval);
+                    resetTrainingButton();
+                    addLog('訓練完成！');
+                    showToast('訓練完成', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('獲取訓練狀態失敗:', error);
+            });
+    }
+    
+    function updateCharts(data) {
+        const epoch = data.current_epoch;
+        
+        // 更新損失圖表
+        if (lossChart.data.labels.length === 0 || lossChart.data.labels[lossChart.data.labels.length - 1] < epoch) {
+            lossChart.data.labels.push(epoch);
+            lossChart.data.datasets[0].data.push(data.train_loss);
+            lossChart.data.datasets[1].data.push(data.val_loss);
+            lossChart.update('none');
+        }
+        
+        // 更新準確率圖表
+        if (accuracyChart.data.labels.length === 0 || accuracyChart.data.labels[accuracyChart.data.labels.length - 1] < epoch) {
+            accuracyChart.data.labels.push(epoch);
+            accuracyChart.data.datasets[0].data.push(data.train_acc);
+            accuracyChart.data.datasets[1].data.push(data.val_acc);
+            accuracyChart.update('none');
+        }
+    }
+    
+    function resetTrainingButton() {
+        const startBtn = document.getElementById('start-training-btn');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-play me-2"></i>開始訓練';
+    }
+    
+    function refreshChart() {
+        // 清空圖表數據
+        lossChart.data.labels = [];
+        lossChart.data.datasets[0].data = [];
+        lossChart.data.datasets[1].data = [];
+        lossChart.update();
+        
+        accuracyChart.data.labels = [];
+        accuracyChart.data.datasets[0].data = [];
+        accuracyChart.data.datasets[1].data = [];
+        accuracyChart.update();
+        
+        showToast('圖表已刷新', 'info');
+    }
+    
+    function addLog(message) {
+        const logsContainer = document.getElementById('training-logs');
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${message}`;
+        logsContainer.appendChild(logEntry);
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+    
+    function clearLogs() {
+        document.getElementById('training-logs').innerHTML = '<div class="text-muted">日誌已清空</div>';
+    }
+</script>
+{% endblock %}

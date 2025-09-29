@@ -1,0 +1,20 @@
+[
+  {
+    "input": "解方程 2x + 5 = 13",
+    "output": "x = 4",
+    "type": "math",
+    "metadata": {
+      "difficulty": "easy",
+      "category": "algebra"
+    }
+  },
+  {
+    "input": "計算 15 × 23",
+    "output": "345",
+    "type": "math",
+    "metadata": {
+      "difficulty": "easy",
+      "category": "arithmetic"
+    }
+  }
+]

@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+
+{% block title %}模型管理 - AI訓練平台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-cogs text-primary me-2"></i>模型管理
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 模型列表 -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>已訓練模型
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshModels()">
+                    <i class="fas fa-sync-alt me-1"></i>刷新
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="models-list">
+                    <div class="text-center text-muted">
+                        <div class="loading-spinner mb-3"></div>
+                        <p>正在加載模型列表...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 模型詳情 -->
+        <div class="card mt-4" id="model-details" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>模型詳情
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>模型名稱:</strong></td>
+                                <td id="detail-name">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>文件大小:</strong></td>
+                                <td id="detail-size">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>創建時間:</strong></td>
+                                <td id="detail-created">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>修改時間:</strong></td>
+                                <td id="detail-modified">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>訓練信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>模型架構:</strong></td>
+                                <td id="detail-architecture">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>參數數量:</strong></td>
+                                <td id="detail-parameters">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>最佳準確率:</strong></td>
+                                <td id="detail-accuracy">--</td>
+                            </tr>
+                            <tr>
+                                <td><strong>最終損失:</strong></td>
+                                <td id="detail-loss">--</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 訓練曲線 -->
+                <div class="mt-4">
+                    <h6>訓練曲線</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="detail-loss-chart" width="400" height="200"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <canvas id="detail-accuracy-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 側邊欄 -->
+    <div class="col-lg-4">
+        <!-- 存儲統計 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-hdd me-2"></i>存儲統計
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="metric-value text-info" id="total-models">0</div>
+                    <div class="metric-label">總模型數</div>
+                </div>
+                
+                <div class="text-center mb-3">
+                    <div class="metric-value text-warning" id="total-size">0 MB</div>
+                    <div class="metric-label">總大小</div>
+                </div>
+                
+                <div class="progress mb-2">
+                    <div class="progress-bar bg-info" id="storage-bar" style="width: 0%"></div>
+                </div>
+                <small class="text-muted">存儲使用情況</small>
+            </div>
+        </div>
+        
+        <!-- 快速操作 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="exportModels()">
+                        <i class="fas fa-download me-2"></i>導出模型
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="cleanupModels()">
+                        <i class="fas fa-broom me-2"></i>清理舊模型
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="deleteAllModels()">
+                        <i class="fas fa-trash me-2"></i>刪除所有模型
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 模型性能對比 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>性能對比
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="performance-comparison" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 刪除確認模態框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>確定要刪除模型 <strong id="delete-model-name"></strong> 嗎？</p>
+                <p class="text-danger">此操作不可撤銷！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let models = [];
+    let selectedModel = null;
+    let deleteModal;
+    let performanceChart;
+    let detailLossChart;
+    let detailAccuracyChart;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        initPerformanceChart();
+        loadModels();
+    });
+    
+    function loadModels() {
+        fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                models = data.models;
+                displayModels();
+                updateStorageStats();
+                updatePerformanceChart();
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('加載模型失敗:', error);
+            showToast('加載模型失敗', 'error');
+        });
+    }
+    
+    function displayModels() {
+        const container = document.getElementById('models-list');
+        
+        if (models.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-folder-open fa-3x mb-3"></i>
+                    <p>暫無已訓練的模型</p>
+                    <a href="/train" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>開始訓練
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = models.map(model => `
+            <div class="model-item border rounded p-3 mb-3" data-model="${model.name}">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-brain fa-2x text-primary me-3"></i>
+                            <div>
+                                <h6 class="mb-1">${model.name}</h6>
+                                <small class="text-muted">${model.architecture || 'Unknown'}</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="metric-value-sm text-success">${formatPercent(model.accuracy * 100)}</div>
+                            <div class="metric-label-sm">準確率</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="metric-value-sm text-info">${formatNumber(model.parameters)}</div>
+                            <div class="metric-label-sm">參數</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="metric-value-sm text-warning">${formatFileSize(model.size)}</div>
+                            <div class="metric-label-sm">大小</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewModel('${model.name}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="downloadModel('${model.name}')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteModel('${model.name}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function viewModel(modelName) {
+        const model = models.find(m => m.name === modelName);
+        if (!model) return;
+        
+        selectedModel = model;
+        
+        // 更新詳情信息
+        document.getElementById('detail-name').textContent = model.name;
+        document.getElementById('detail-size').textContent = formatFileSize(model.size);
+        document.getElementById('detail-created').textContent = new Date(model.created).toLocaleString();
+        document.getElementById('detail-modified').textContent = new Date(model.modified).toLocaleString();
+        document.getElementById('detail-architecture').textContent = model.architecture || '--';
+        document.getElementById('detail-parameters').textContent = formatNumber(model.parameters);
+        document.getElementById('detail-accuracy').textContent = formatPercent(model.accuracy * 100);
+        document.getElementById('detail-loss').textContent = model.loss ? model.loss.toFixed(4) : '--';
+        
+        // 顯示詳情面板
+        document.getElementById('model-details').style.display = 'block';
+        
+        // 滾動到詳情面板
+        document.getElementById('model-details').scrollIntoView({ behavior: 'smooth' });
+        
+        // 加載訓練曲線
+        loadTrainingCurves(modelName);
+    }
+    
+    function loadTrainingCurves(modelName) {
+        fetch(`/api/training_plots/${modelName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.plots) {
+                updateDetailCharts(data.plots);
+            }
+        })
+        .catch(error => {
+            console.error('加載訓練曲線失敗:', error);
+        });
+    }
+    
+    function updateDetailCharts(plots) {
+        // 損失曲線
+        if (detailLossChart) {
+            detailLossChart.destroy();
+        }
+        
+        const lossCtx = document.getElementById('detail-loss-chart').getContext('2d');
+        detailLossChart = new Chart(lossCtx, {
+            type: 'line',
+            data: {
+                labels: plots.epochs || [],
+                datasets: [{
+                    label: '訓練損失',
+                    data: plots.train_loss || [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: '驗證損失',
+                    data: plots.val_loss || [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '損失曲線'
+                    }
+                }
+            }
+        });
+        
+        // 準確率曲線
+        if (detailAccuracyChart) {
+            detailAccuracyChart.destroy();
+        }
+        
+        const accCtx = document.getElementById('detail-accuracy-chart').getContext('2d');
+        detailAccuracyChart = new Chart(accCtx, {
+            type: 'line',
+            data: {
+                labels: plots.epochs || [],
+                datasets: [{
+                    label: '訓練準確率',
+                    data: plots.train_acc || [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: '驗證準確率',
+                    data: plots.val_acc || [],
+                    borderColor: 'rgb(255, 205, 86)',
+                    backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '準確率曲線'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+    
+    function deleteModel(modelName) {
+        selectedModel = models.find(m => m.name === modelName);
+        document.getElementById('delete-model-name').textContent = modelName;
+        deleteModal.show();
+    }
+    
+    function confirmDelete() {
+        if (!selectedModel) return;
+        
+        fetch(`/api/models/${selectedModel.name}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('模型已刪除', 'success');
+                loadModels();
+                document.getElementById('model-details').style.display = 'none';
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('刪除模型失敗:', error);
+            showToast('刪除模型失敗', 'error');
+        })
+        .finally(() => {
+            deleteModal.hide();
+        });
+    }
+    
+    function downloadModel(modelName) {
+        const link = document.createElement('a');
+        link.href = `/api/models/${modelName}/download`;
+        link.download = modelName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('模型下載已開始', 'info');
+    }
+    
+    function updateStorageStats() {
+        const totalModels = models.length;
+        const totalSize = models.reduce((sum, model) => sum + model.size, 0);
+        const maxSize = 1024 * 1024 * 1024; // 1GB 限制
+        
+        document.getElementById('total-models').textContent = totalModels;
+        document.getElementById('total-size').textContent = formatFileSize(totalSize);
+        document.getElementById('storage-bar').style.width = Math.min((totalSize / maxSize) * 100, 100) + '%';
+    }
+    
+    function initPerformanceChart() {
+        const ctx = document.getElementById('performance-comparison').getContext('2d');
+        performanceChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['準確率', '參數效率', '訓練速度', '推理速度', '模型大小'],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '模型性能對比'
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+    
+    function updatePerformanceChart() {
+        if (models.length === 0) return;
+        
+        const colors = [
+            'rgba(255, 99, 132, 0.6)',
+            'rgba(54, 162, 235, 0.6)',
+            'rgba(255, 205, 86, 0.6)',
+            'rgba(75, 192, 192, 0.6)',
+            'rgba(153, 102, 255, 0.6)'
+        ];
+        
+        performanceChart.data.datasets = models.slice(0, 5).map((model, index) => ({
+            label: model.name,
+            data: [
+                model.accuracy || 0,
+                Math.min(1, 1000000 / (model.parameters || 1000000)), // 參數效率
+                Math.random() * 0.5 + 0.5, // 訓練速度 (模擬)
+                Math.random() * 0.5 + 0.5, // 推理速度 (模擬)
+                Math.min(1, 50 / (model.size / 1024 / 1024 || 50)) // 模型大小效率
+            ],
+            backgroundColor: colors[index % colors.length],
+            borderColor: colors[index % colors.length].replace('0.6', '1'),
+            borderWidth: 2
+        }));
+        
+        performanceChart.update();
+    }
+    
+    function refreshModels() {
+        loadModels();
+        showToast('模型列表已刷新', 'info');
+    }
+    
+    function exportModels() {
+        showToast('導出功能開發中...', 'info');
+    }
+    
+    function cleanupModels() {
+        showToast('清理功能開發中...', 'info');
+    }
+    
+    function deleteAllModels() {
+        if (confirm('確定要刪除所有模型嗎？此操作不可撤銷！')) {
+            showToast('批量刪除功能開發中...', 'info');
+        }
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+</script>
+{% endblock %}
